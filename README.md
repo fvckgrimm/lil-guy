@@ -70,6 +70,19 @@ You can also pipe other commands into lil-guy:
 pip install discord | lil-guy -message "I can handle this myself..." -character blinkcat
 ```
 
+For use in scripts:
+
+```bash
+# in something.sh
+lil-guy -message "Doing something..." -character cat &
+PID=$!
+
+# Do your task here
+echo "thanks for the work"
+
+kill $PID 2>/dev/null
+```
+
 
 ## Adding New Characters
 

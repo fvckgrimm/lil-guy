@@ -24,7 +24,7 @@ type Config struct {
 	Characters map[string]Character
 }
 
-const outputLines = 10 // Number of output lines to display
+const outputLines = 35 // Number of output lines to display
 
 func main() {
 	message := flag.String("message", "Hello, I'm lil guy!", "Message to display")

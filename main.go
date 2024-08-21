@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -24,7 +25,7 @@ type Config struct {
 	Characters map[string]Character
 }
 
-const outputLines = 35 // Number of output lines to display
+const outputLines = 100 // Number of output lines to display
 
 func main() {
 	message := flag.String("message", "Hello, I'm lil guy!", "Message to display")
@@ -35,6 +36,7 @@ func main() {
 	config, err := loadConfig()
 	if err != nil {
 		fmt.Printf("Error loading config: %v\n", err)
+		logError(err)
 		os.Exit(1)
 	}
 
@@ -80,8 +82,12 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	multiReader := io.MultiReader(os.Stdin, os.Stdin)
 	outputChan := make(chan string)
-	go readStdin(outputChan)
+	errChan := make(chan error)
+	go readStdin(multiReader, outputChan)
+
+	go logPipedErrors(errChan)
 
 	go func() {
 		<-sigChan
@@ -94,6 +100,15 @@ func main() {
 	for i := range outputBuffer {
 		outputBuffer[i] = "" // Initialize with empty strings
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			err := fmt.Errorf("panic occurred: %v", r)
+			fmt.Println(err)
+			logError(err)
+			os.Exit(1)
+		}
+	}()
 
 	for {
 		for _, frame := range frames {
@@ -134,6 +149,7 @@ func main() {
 			case newOutput := <-outputChan:
 				// Shift the buffer and add the new output
 				outputBuffer = append(outputBuffer[1:], newOutput)
+				fmt.Printf("  %s\n", newOutput)
 			default:
 				// No new output, continue with the current buffer
 			}
@@ -156,6 +172,7 @@ func loadConfig() (*Config, error) {
 	// Read and print raw file contents
 	rawContent, err := os.ReadFile(configPath)
 	if err != nil {
+		logError(fmt.Errorf("error reading config file: %v", err))
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}
 	fmt.Println("Raw config file contents:")
@@ -179,10 +196,25 @@ func loadConfig() (*Config, error) {
 	return &config, nil
 }
 
-func readStdin(outputChan chan<- string) {
-	scanner := bufio.NewScanner(os.Stdin)
+func readStdin(r io.Reader, outputChan chan<- string) {
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		outputChan <- scanner.Text()
+	}
+}
+
+func logPipedErrors(errChan <-chan error) {
+	logFile := filepath.Join(os.TempDir(), "lil-guy-output.log")
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("Failed to open log file: %v\n", err)
+		return
+	}
+	defer f.Close()
+
+	logger := log.New(f, "", log.LstdFlags)
+	for err := range errChan {
+		logger.Printf("Error: %v\n", err)
 	}
 }
 
@@ -195,4 +227,19 @@ func getArms(frame string) (string, string) {
 	default:
 		return frame, frame
 	}
+}
+
+func logError(err error) {
+	logFile := filepath.Join(os.TempDir(), "lil-guy-error.log")
+	f, openErr := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if openErr != nil {
+		fmt.Printf("Failed to open log file: %v\n", openErr)
+		return
+	}
+	defer f.Close()
+
+	logger := log.New(f, "", log.LstdFlags)
+	logger.Printf("Error: %v\n", err)
+
+	fmt.Printf("Error logged to: %s\n", logFile)
 }

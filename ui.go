@@ -11,7 +11,7 @@ import (
 	"golang.org/x/term"
 )
 
-const maxOutputLines = 10 // Adjust this value based on your screen size
+const maxOutputLines = 60 // Adjust this value based on your screen size
 
 type model struct {
 	character    Character

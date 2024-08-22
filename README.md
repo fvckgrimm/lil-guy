@@ -13,6 +13,11 @@ lil-guy is a fun, customizable command-line animation tool that displays cute ch
 - Customizable messages
 - Debug mode for troubleshooting
 
+## TODO:
+
+- Fix handling of err being piped into lil-guy
+
+
 ## Installation
 
 ### Releases
@@ -51,8 +56,8 @@ Run lil-guy with the following command:
 
 Available flags:
 
-* -message: Set the message to display (default: "Hello, I'm lil guy!")
-* -character: Choose the character to display (default: "default")
+* -m, -message: Set the message to display (default: "Hello, I'm lil guy!")
+* -c, -character: Choose the character to display (default: "default")
 * -debug: Run in debug mode for troubleshooting
 
 Examples:
